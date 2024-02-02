@@ -7,7 +7,7 @@ warnings.filterwarnings("ignore")
 import torch
 from imagebind.models import imagebind_model
 from fastapi.staticfiles import StaticFiles
-
+import json
 import shutil
 import os
 from util import *
@@ -40,29 +40,33 @@ def read_root():
 
 # Api to recieve list of images and return list of embeddings
 @app.post("/get_image_embeddings")
-def get_image_embeddings(files: List[UploadFile] = File(...), List: List[str] = None):
-    # Delete all files in images folder
-    # shutil.rmtree("./images")
-    # os.mkdir("./images")
-    # Remove image_embeddings.npy if it exists
-    print("Files: ",files)
-    if os.path.exists("image_embeddings.npy"):
-        os.remove("image_embeddings.npy")
-    # Get Embeddings
-    embeddings = []
-    for file in files:
-        # Save file to images folder
-        file_path = os.path.join("./images",file.filename)
-        with open(file_path, "wb") as file_object:
-            shutil.copyfileobj(file.file, file_object)
-        # Get Embedding  
-        embedding = getImageEmbedding(model,[file_path], device)  
-        embeddings.append([file_path,embedding])
-    # Save embeddings to file using pickle 
-    with open("image_embeddings.pkl", "wb") as f:
-        pickle.dump(embeddings, f)
-    return {"Success": True}
-
+def get_image_embeddings(files: List[UploadFile] = File(...), paths: List[str] = None):
+    try:
+        # Delete all files in images folder
+        if os.path.exists("./embeddings/image_embeddings.npy"):
+            os.remove("./embeddings/image_embeddings.npy")
+        # Temporarily save images to images folder
+        file_paths = []
+        paths = paths[0].split(",")
+        for file in files:
+            file_path = os.path.join("./images", file.filename)
+            with open(file_path, "wb") as file_object:
+                shutil.copyfileobj(file.file, file_object)
+            file_paths.append(file_path)
+        # Get Embeddings
+        embeddings = []
+        for file,path  in zip(file_paths,paths):
+            embeddings.append([path, getImageEmbedding(model, [file], device)])
+        # Save embeddings to file using pickle 
+        with open("./embeddings/image_embeddings.pkl", "wb") as f:
+            pickle.dump(embeddings, f)
+        # Remove all files from images folder
+        for file in file_paths:
+            os.remove(file)
+        return {"Success": True}
+    except Exception as e:
+        print(e)
+        return {"Success": False}
 
 @app.post("/get_text_embeddings")
 def get_text_embeddings(text: str,  num_images : int = 5):
@@ -70,7 +74,7 @@ def get_text_embeddings(text: str,  num_images : int = 5):
     text_embedding = getTextEmbedding(model,[text], device)
     # Read image embeddings from file
     image_embeddings = []
-    with open("image_embeddings.pkl", "rb") as f:
+    with open("./embeddings/image_embeddings.pkl", "rb") as f:
         image_embeddings = pickle.load(f)
     # Calculate  similarity
     distances = []
@@ -79,5 +83,5 @@ def get_text_embeddings(text: str,  num_images : int = 5):
         distances.append([path,torch.dist(text_embedding,embeddings)])
     distances = sorted(distances, key = lambda x : x[-1])
     # Return top 5 images
-    images = [distances[i][0][1:] for i in range(num_images)]
+    images = [distances[i][0] for i in range(num_images)]
     return {"Success": True, "images": images}
