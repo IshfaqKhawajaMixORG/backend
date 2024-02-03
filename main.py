@@ -14,6 +14,7 @@ from util import *
 from get_image_embedding import getImageEmbedding
 from get_text_embedding import getTextEmbedding
 from fastapi import FastAPI, File, UploadFile
+from sklearn.metrics.pairwise import cosine_similarity
 from typing import List
 import pickle
 
@@ -68,6 +69,17 @@ def get_image_embeddings(files: List[UploadFile] = File(...), paths: List[str] =
         print(e)
         return {"Success": False}
 
+# def cosineSimilarity(text_embedding, image_embeddings, num_images = 5):
+#     similarities = cosine_similarity(text_embedding, image_embeddings)
+#     print(similarities)
+#     indices = similarities.argsort()[0][::-1][:num_images]
+#     print(indices)
+#     images = [image_embeddings[i][0] for i in indices]
+#     return images
+    
+    
+
+
 @app.post("/get_text_embeddings")
 def get_text_embeddings(text: str,  num_images : int = 5):
     # Get text embedding
@@ -77,6 +89,7 @@ def get_text_embeddings(text: str,  num_images : int = 5):
     with open("./embeddings/image_embeddings.pkl", "rb") as f:
         image_embeddings = pickle.load(f)
     # Calculate  similarity
+    # images = cosineSimilarity(text_embedding, image_embeddings, num_images)
     distances = []
     for img in image_embeddings:
         path, embeddings = img[0],img[1]
