@@ -7,7 +7,6 @@ warnings.filterwarnings("ignore")
 import torch
 from imagebind.models import imagebind_model
 from fastapi.staticfiles import StaticFiles
-import json
 import shutil
 import os
 from util import *
@@ -17,6 +16,7 @@ from fastapi import FastAPI, File, UploadFile
 from sklearn.metrics.pairwise import cosine_similarity
 from typing import List
 import pickle
+import numpy as np
 
 model = imagebind_model.imagebind_huge(pretrained=True)
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -57,7 +57,7 @@ def get_image_embeddings(files: List[UploadFile] = File(...), paths: List[str] =
         # Get Embeddings
         embeddings = []
         for file,path  in zip(file_paths,paths):
-            embeddings.append([path, getImageEmbedding(model, [file], device)])
+            embeddings.append([path, getImageEmbedding(model, [file], device)[0]])
         # Save embeddings to file using pickle 
         with open("./embeddings/image_embeddings.pkl", "wb") as f:
             pickle.dump(embeddings, f)
@@ -69,32 +69,44 @@ def get_image_embeddings(files: List[UploadFile] = File(...), paths: List[str] =
         print(e)
         return {"Success": False}
 
-# def cosineSimilarity(text_embedding, image_embeddings, num_images = 5):
-#     similarities = cosine_similarity(text_embedding, image_embeddings)
-#     print(similarities)
-#     indices = similarities.argsort()[0][::-1][:num_images]
-#     print(indices)
-#     images = [image_embeddings[i][0] for i in indices]
-#     return images
-    
+
+  
+def cosine_similarity(tensor1, tensor2):
+    dot_product = torch.dot(tensor1, tensor2)
+    norm_tensor1 = torch.norm(tensor1)
+    norm_tensor2 = torch.norm(tensor2)
+    similarity = dot_product / (norm_tensor1 * norm_tensor2)
+    return similarity.item() 
     
 
 
 @app.post("/get_text_embeddings")
 def get_text_embeddings(text: str,  num_images : int = 5):
     # Get text embedding
-    text_embedding = getTextEmbedding(model,[text], device)
+    text_embedding = getTextEmbedding(model,[text], device)[0]
     # Read image embeddings from file
     image_embeddings = []
     with open("./embeddings/image_embeddings.pkl", "rb") as f:
         image_embeddings = pickle.load(f)
-    # Calculate  similarity
-    # images = cosineSimilarity(text_embedding, image_embeddings, num_images)
-    distances = []
-    for img in image_embeddings:
-        path, embeddings = img[0],img[1]
-        distances.append([path,torch.dist(text_embedding,embeddings)])
-    distances = sorted(distances, key = lambda x : x[-1])
-    # Return top 5 images
-    images = [distances[i][0] for i in range(num_images)]
-    return {"Success": True, "images": images}
+    # distances = []
+    # for img in image_embeddings:
+    #     path, embeddings = img[0],img[1]
+    #     distances.append([path,torch.dist(text_embedding,embeddings)])
+    # distances = sorted(distances, key = lambda x : x[-1])
+    # # Return top 5 images
+    # images = [distances[i][0] for i in range(num_images)]
+    image_tensors = [entry[1] for entry in image_embeddings]
+    similarities = [cosine_similarity(text_embedding, img_tensor) for img_tensor in image_tensors]
+    top_n_indices = np.argsort(similarities)[::-1][:num_images]
+    top_n_image_paths = [image_embeddings[i][0] for i in top_n_indices]
+    print(len(similarities))
+    print(len(top_n_indices))
+    print(num_images)
+    print(len(top_n_image_paths))
+    print(len(image_embeddings))
+    return {"Success": True, "images": top_n_image_paths}
+
+
+
+# if __name__ == "__main__":
+#     get_text_embeddings(text="cat", num_images=5)
