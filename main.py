@@ -58,6 +58,7 @@ def get_image_embeddings(files: List[UploadFile] = File(...), paths: List[str] =
         embeddings = []
         for file,path  in zip(file_paths,paths):
             embeddings.append([path, getImageEmbedding(model, [file], device)[0]])
+        print("length of embeddings", len(embeddings))
         # Save embeddings to file using pickle 
         with open("./embeddings/image_embeddings.pkl", "wb") as f:
             pickle.dump(embeddings, f)
@@ -97,12 +98,12 @@ def get_text_embeddings(text: str,  num_images : int = 5):
     # images = [distances[i][0] for i in range(num_images)]
     image_tensors = [entry[1] for entry in image_embeddings]
     similarities = [cosine_similarity(text_embedding, img_tensor) for img_tensor in image_tensors]
-    top_n_indices = np.argsort(similarities)[::-1][:num_images]
+    top_n_indices = np.argsort(similarities)[::-1][:]
     top_n_image_paths = [image_embeddings[i][0] for i in top_n_indices]
     # print(len(similarities))
     # print(len(top_n_indices))
     # print(num_images)
-    # print(len(top_n_image_paths))
+    print(len(top_n_image_paths))
     # print(len(image_embeddings))
     return {"Success": True, "images": top_n_image_paths}
 
