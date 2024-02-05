@@ -99,11 +99,11 @@ def get_text_embeddings(text: str,  num_images : int = 5):
     similarities = [cosine_similarity(text_embedding, img_tensor) for img_tensor in image_tensors]
     top_n_indices = np.argsort(similarities)[::-1][:num_images]
     top_n_image_paths = [image_embeddings[i][0] for i in top_n_indices]
-    print(len(similarities))
-    print(len(top_n_indices))
-    print(num_images)
-    print(len(top_n_image_paths))
-    print(len(image_embeddings))
+    # print(len(similarities))
+    # print(len(top_n_indices))
+    # print(num_images)
+    # print(len(top_n_image_paths))
+    # print(len(image_embeddings))
     return {"Success": True, "images": top_n_image_paths}
 
 
