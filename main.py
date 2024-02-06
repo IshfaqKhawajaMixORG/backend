@@ -132,7 +132,11 @@ def get_text_embeddings(text: str,
         top_n_indices = np.argsort(similarities)[::-1][:num_images]
         top_n_image_paths = [image_embeddings[i][0] for i in top_n_indices]
         print(len(top_n_image_paths))
-        return {"Success": True, "images": top_n_image_paths}
+        return {
+            "Success": True,
+            "images": top_n_image_paths,
+            "total_images": len(image_embeddings),
+            }
     except Exception as e:
         print(e)
         return {"Success": False, "Error": str(e)}
