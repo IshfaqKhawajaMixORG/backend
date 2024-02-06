@@ -17,6 +17,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 from typing import List
 import pickle
 import numpy as np
+import concurrent.futures
+
 
 model = imagebind_model.imagebind_huge(pretrained=True)
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -32,6 +34,7 @@ app = FastAPI()
 
 
 app.mount("/images", StaticFiles(directory="images"), name="images")
+app.mount("/embeddings", StaticFiles(directory="embeddings"), name="embeddings")
 
 
 # Return Hello From backend on home page
@@ -41,26 +44,54 @@ def read_root():
 
 # Api to recieve list of images and return list of embeddings
 @app.post("/get_image_embeddings")
-def get_image_embeddings(files: List[UploadFile] = File(...), paths: List[str] = None):
+def get_image_embeddings(files: List[UploadFile] = File(...), 
+                         paths: List[str] = None, 
+                         token : List[str] = None):
+    
     try:
-        # Delete all files in images folder
-        if os.path.exists("./embeddings/image_embeddings.npy"):
-            os.remove("./embeddings/image_embeddings.npy")
-        # Temporarily save images to images folder
+        token = token[0]
+        # print("Token    ", token)
+        embeddingPath = f"./embeddings/{token}.pkl"
+        embeddings = []
+        alreadyPresent = []
         file_paths = []
-        paths = paths[0].split(",")
-        for file in files:
+        # Delete all files in images folder
+        if os.path.exists(embeddingPath):
+            # Read it using pickle
+            with open(embeddingPath, "rb") as f:
+                embeddings = pickle.load(f)
+        # print("Already Present length of embeddings", len(embeddings))
+        # Temporarily save images to images folder
+        sentPaths = paths[0].split(",")
+        pathsToSave = []
+        if len(embeddings) > 0:
+            alreadyPresent = [entry[0] for entry in embeddings]
+        for file,path in zip(files,sentPaths):
+            if path in alreadyPresent:
+                # Remove from paths
+                # print("Already present", path)
+                continue
             file_path = os.path.join("./images", file.filename)
             with open(file_path, "wb") as file_object:
                 shutil.copyfileobj(file.file, file_object)
             file_paths.append(file_path)
+            pathsToSave.append(path)
+        
         # Get Embeddings
-        embeddings = []
-        for file,path  in zip(file_paths,paths):
-            embeddings.append([path, getImageEmbedding(model, [file], device)[0]])
+        # Parallelize this
+        # allEmbeddings = getImageEmbedding(model, file_paths, device)
+        # print("Length of allEmbeddings", len(allEmbeddings))
+        # for file,path  in zip(file_paths,pathsToSave):
+        #     embeddings.append([path, getImageEmbedding(model, [file], device)[0]])
+         # Parallelize the process of getting embeddings
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            results = executor.map(lambda x: (x[0], getImageEmbedding(model, [x[1]], device)[0]), zip(pathsToSave, file_paths))
+        
+        for path, embedding in results:
+            embeddings.append([path, embedding])
         print("length of embeddings", len(embeddings))
         # Save embeddings to file using pickle 
-        with open("./embeddings/image_embeddings.pkl", "wb") as f:
+        with open(embeddingPath, "wb") as f:
             pickle.dump(embeddings, f)
         # Remove all files from images folder
         for file in file_paths:
@@ -68,7 +99,7 @@ def get_image_embeddings(files: List[UploadFile] = File(...), paths: List[str] =
         return {"Success": True}
     except Exception as e:
         print(e)
-        return {"Success": False}
+        return {"Success": False, "Error": str(e)}
 
 
   
@@ -82,30 +113,29 @@ def cosine_similarity(tensor1, tensor2):
 
 
 @app.post("/get_text_embeddings")
-def get_text_embeddings(text: str,  num_images : int = 5):
-    # Get text embedding
-    text_embedding = getTextEmbedding(model,[text], device)[0]
-    # Read image embeddings from file
-    image_embeddings = []
-    with open("./embeddings/image_embeddings.pkl", "rb") as f:
-        image_embeddings = pickle.load(f)
-    # distances = []
-    # for img in image_embeddings:
-    #     path, embeddings = img[0],img[1]
-    #     distances.append([path,torch.dist(text_embedding,embeddings)])
-    # distances = sorted(distances, key = lambda x : x[-1])
-    # # Return top 5 images
-    # images = [distances[i][0] for i in range(num_images)]
-    image_tensors = [entry[1] for entry in image_embeddings]
-    similarities = [cosine_similarity(text_embedding, img_tensor) for img_tensor in image_tensors]
-    top_n_indices = np.argsort(similarities)[::-1][:]
-    top_n_image_paths = [image_embeddings[i][0] for i in top_n_indices]
-    # print(len(similarities))
-    # print(len(top_n_indices))
-    # print(num_images)
-    print(len(top_n_image_paths))
-    # print(len(image_embeddings))
-    return {"Success": True, "images": top_n_image_paths}
+def get_text_embeddings(text: str,  
+                        num_images : int = 5,
+                        token : str = None
+                        ):
+    try:
+        # Get text embedding
+        text_embedding = getTextEmbedding(model,[text], device)[0]
+        # Read image embeddings from file
+        image_embeddings = []
+        embeddingPath = f"./embeddings/{token}.pkl"
+        if not os.path.exists(embeddingPath):
+            return {"Success": False, "Error": "No embeddings found"}
+        with open(embeddingPath, "rb") as f:
+            image_embeddings = pickle.load(f)
+        image_tensors = [entry[1] for entry in image_embeddings]
+        similarities = [cosine_similarity(text_embedding, img_tensor) for img_tensor in image_tensors]
+        top_n_indices = np.argsort(similarities)[::-1][:num_images]
+        top_n_image_paths = [image_embeddings[i][0] for i in top_n_indices]
+        print(len(top_n_image_paths))
+        return {"Success": True, "images": top_n_image_paths}
+    except Exception as e:
+        print(e)
+        return {"Success": False, "Error": str(e)}
 
 
 
