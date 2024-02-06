@@ -96,7 +96,11 @@ def get_image_embeddings(files: List[UploadFile] = File(...),
         # Remove all files from images folder
         for file in file_paths:
             os.remove(file)
-        return {"Success": True}
+        return {
+            "Success": True, 
+            "total_images": len(embeddings),
+            "images": [entry[0] for entry in embeddings]
+            }
     except Exception as e:
         print(e)
         return {"Success": False, "Error": str(e)}
