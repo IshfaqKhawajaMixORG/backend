@@ -133,7 +133,8 @@ def get_text_embeddings(text: str,
             image_embeddings = pickle.load(f)
         image_tensors = [entry[1] for entry in image_embeddings]
         similarities = [cosine_similarity(text_embedding, img_tensor) for img_tensor in image_tensors]
-        top_n_indices = np.argsort(similarities)[::-1][:num_images]
+        temp  = np.argsort(similarities)[::-1]
+        top_n_indices = temp[:num_images] if len(temp) > num_images else temp
         top_n_image_paths = [image_embeddings[i][0] for i in top_n_indices]
         print(len(top_n_image_paths))
         return {
@@ -146,6 +147,23 @@ def get_text_embeddings(text: str,
         return {"Success": False, "Error": str(e)}
 
 
+@app.post("/get_all_images")
+def get_all_images(token : str = None):
+    try:
+        # Read image embeddings from file
+        image_embeddings = []
+        embeddingPath = f"./embeddings/{token}.pkl"
+        if not os.path.exists(embeddingPath):
+            return {"Success": False, "Error": "No embeddings found"}
+        with open(embeddingPath, "rb") as f:
+            image_embeddings = pickle.load(f)
+        image_paths = [entry[0] for entry in image_embeddings]
+        return {
+            "Success": True,
+            "images": image_paths,
+            "total_images": len(image_embeddings),
+            }
+    except Exception as e:
+        print(e)
+        return {"Success": False, "Error": str(e)}
 
-# if __name__ == "__main__":
-#     get_text_embeddings(text="cat", num_images=5)
