@@ -87,7 +87,7 @@ def load_and_transform_vision_data(image_paths, device):
         ]
     )
 
-    for image_path in image_paths:
+    for image_path in image_paths:  
         with open(image_path, "rb") as fopen:
             image = Image.open(fopen).convert("RGB")
 

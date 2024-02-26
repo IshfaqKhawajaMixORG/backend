@@ -21,8 +21,8 @@ import concurrent.futures
 
 
 model = imagebind_model.imagebind_huge(pretrained=True)
-device = "cuda:0" if torch.cuda.is_available() else "cpu"
-
+device = "cuda" if torch.cuda.is_available() else "cpu"
+# device = torch.device("mps")
 # Instantiate model
 model.eval()
 model.to(device)
