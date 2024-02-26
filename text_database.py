@@ -4,6 +4,7 @@ import faiss
 import time
 import torch
 from imagebind import data
+from tqdm import tqdm
 from imagebind.models import imagebind_model
 from imagebind.models.imagebind_model import ModalityType
 
@@ -23,7 +24,7 @@ def create_embeddings_and_save_mappings(df, model, device):
     embeddings = []
     text_mapping = {}  
 
-    for index, row in df.iterrows():  
+    for index, row in tqdm(df.iterrows()):  
         text = row['DisplayName']
         # print(text)
         embedding = generate_embeddings(text, model, device)
