@@ -44,7 +44,7 @@ def main(image_path):
 
     # image_embedding = generate_embedding_for_input_image(image_path, model, device)
     image_embedding = getImageEmbedding(model,[image_path], device)
-    print(image_embedding)
+    # print(image_embedding)
     _, I = search_texts_from_image_embedding(index, image_embedding)
     # Load the text mapping
     tags = []
@@ -57,8 +57,11 @@ def main(image_path):
                     tags.append(text.item())
             except Exception as e:
                 print(e)
-    
+    print("\n\n")
+    print("-"*100)
+    print("Tags Found are : \n ")
     print("\n".join(tags))
+    print("-"*100)
 if __name__ == "__main__":
-    image_path = "data/n01704323_2389.JPEG"  
+    image_path = "data/n01704323_5906.JPEG"  
     main(image_path)
