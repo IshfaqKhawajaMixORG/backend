@@ -50,11 +50,11 @@ def main(image_path):
     tags = []
     for i in I[0]:
         # Load File from text embedding folder:
-        with open(f'text_embeddings/{i}.npy', 'rb') as f:
             try:
-                # Load the text from the file
-                text = np.load(f, allow_pickle=True)
-                tags.append(text.item())
+                with open(f'text_embeddings/{i}.npy', 'rb') as f:
+                    # Load the text from the file
+                    text = np.load(f, allow_pickle=True)
+                    tags.append(text.item())
             except Exception as e:
                 print(e)
     
