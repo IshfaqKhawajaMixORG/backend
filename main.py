@@ -17,6 +17,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from typing import List
 import pickle
 import numpy as np
+from get_tags import main as get_tags_from_image_embedding
 import concurrent.futures
 
 
@@ -167,3 +168,21 @@ def get_all_images(token : str = None):
         print(e)
         return {"Success": False, "Error": str(e)}
 
+
+
+# Get tags API
+@app.post("/image/get_tags")
+def get_tags(File : UploadFile = File(...)):
+    try:
+        # Save the image to images folder
+        file_path = os.path.join("./images", File.filename)
+        with open(file_path, "wb") as file_object:
+            shutil.copyfileobj(File.file, file_object)
+        # Get tags
+        tags = get_tags_from_image_embedding(file_path, model, device)
+        # Remove the file from images folder
+        os.remove(file_path)
+        return {"Success": True, "tags": tags}
+    except Exception as e:
+        print(e)
+        return {"Success": False, "Error": str(e)}
