@@ -18,24 +18,33 @@ from imagebind.models import imagebind_model
 def create_database(model, device):
     dataset_name = "amazon data"
     total_directories = os.listdir(f"{parent_dir}/{dataset_name}")
-    columns = None
+    main_category = []
+    sub_category = []
     for directory in total_directories:
+        embeddings = []
         try:
             file_path = f"{parent_dir}/{dataset_name}/{directory}"
             df = pd.read_csv(file_path)
-            for i in range(len(df)):    
-                row = df.iloc[i]
-                image = row['image']
-                # Save Image to the directory
-                image_path = f"images/{i}.jpg"
-                with open(image_path, 'wb') as f:
-                    f.write(requests.get(image).content)
-                # Get Embedding
-                embedding = getImageEmbedding(model, [image_path], device).squeeze()
-                # Delete the image
-                os.remove(image_path)
-                print(embedding)
-                break            
+            for i in range(len(df)):  
+                try:  
+                    row = df.iloc[i]
+                    image = row['image']
+                    # Save Image to the directory
+                    image_path = f"images/{i}.jpg"
+                    with open(image_path, 'wb') as f:
+                        f.write(requests.get(image).content)
+                    # Get Embedding
+                    embedding = getImageEmbedding(model, [image_path], device).squeeze()
+                    # Delete the image
+                    os.remove(image_path)
+                    # print(embedding)
+                    embeddings.append(embedding)
+                except Exception as e:
+                    print(e)
+                    if os.path.exists(image_path):
+                        os.remove(image_path)
+                    pass
+            sub_category.append(torch.mean(torch.stack(embeddings), dim=0))               
         except Exception as e:
             print(e)
             pass
@@ -45,7 +54,7 @@ def create_database(model, device):
 
 
 if __name__ == "__main__":
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Device   ", device)
     model = imagebind_model.imagebind_huge(pretrained=True)
     model.eval()
