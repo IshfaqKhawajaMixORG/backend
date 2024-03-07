@@ -22,6 +22,8 @@ def create_database(model, device):
     main_category = {}
     sub_category = {}
     for directory in total_directories:
+        print("Reading From Directory: ", directory)
+        count = 0
         try:
             file_path = f"{parent_dir}/{dataset_name}/{directory}"
             df = pd.read_csv(file_path)
@@ -45,18 +47,27 @@ def create_database(model, device):
                         main_category[m] = []
                     if s not in sub_category:
                         sub_category[s] = []
-                    main_category[m].append(embedding)
-                    sub_category[s].append(embedding)
+                    main_category[m].append([embedding, 
+                        row.to_dict(),
+                    ])
+                    sub_category[s].append([embedding,
+                                            row.to_dict()
+                                            ])
                     
+                    count += 1
                     
                 except Exception as e:
-                    print(e)
+                    # print(e)
                     if os.path.exists(image_path):
                         os.remove(image_path)
-                    pass
+                    
+                if count >= 100: # Limiting the number of images to 100
+                    break
         except Exception as e:
             print(e)
-            pass
+            
+       
+        
         
 
     # Save main category and subcategory embeddings
@@ -82,5 +93,5 @@ if __name__ == "__main__":
     # sub_category = pickle.load(f)
     # f.close()
     
-    # print(main_category)
-    # print(sub_category)
+    # # print(main_category)
+    # print(sub_category["Heating & Cooling Appliances"])
