@@ -1,3 +1,4 @@
+import json
 import sys
 
 sys.path.append(".")
@@ -19,6 +20,7 @@ import pickle
 import numpy as np
 from get_tags import main as get_tags_from_image_embedding
 import concurrent.futures
+from ecom_files.get_image_details import main as get_image_details
 
 
 model = imagebind_model.imagebind_huge(pretrained=True)
@@ -180,6 +182,25 @@ def get_tags(File : UploadFile = File(...)):
             shutil.copyfileobj(File.file, file_object)
         # Get tags
         tags = get_tags_from_image_embedding(file_path, model, device)
+        # Remove the file from images folder
+        os.remove(file_path)
+        return {"Success": True, "tags": tags}
+    except Exception as e:
+        print(e)
+        return {"Success": False, "Error": str(e)}
+    
+
+
+# Get tags API
+@app.post("/image/get_details")
+def get_details(File : UploadFile = File(...), top_n = 5):
+    try:
+        # Save the image to images folder
+        file_path = os.path.join("./images", File.filename)
+        with open(file_path, "wb") as file_object:
+            shutil.copyfileobj(File.file, file_object)
+        # Get tags
+        tags = get_image_details(file_path, model, device, top_n)
         # Remove the file from images folder
         os.remove(file_path)
         return {"Success": True, "tags": tags}
