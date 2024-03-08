@@ -193,16 +193,17 @@ def get_tags(File : UploadFile = File(...)):
 
 # Get tags API
 @app.post("/image/get_details")
-def get_details(File : UploadFile = File(...), top_n = 5):
+def get_details(file : UploadFile = File(...), top_n = 5):
     try:
         # Save the image to images folder
-        file_path = os.path.join("./images", File.filename)
+        file_path = os.path.join("./images", file.filename)
         with open(file_path, "wb") as file_object:
-            shutil.copyfileobj(File.file, file_object)
+            shutil.copyfileobj(file.file, file_object)
         # Get tags
         tags = get_image_details(file_path, model, device, top_n)
         # Remove the file from images folder
-        os.remove(file_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
         return {"Success": True, "tags": tags}
     except Exception as e:
         print(e)

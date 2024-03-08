@@ -21,7 +21,7 @@ def search_texts_from_image_embedding(index, embedding, top_n=5):
     embedding = embedding.reshape(1, -1)
     D, I = index.search(embedding, top_n)
     end_time = time.time()
-    print(f"Total time to generate FAISS database: {end_time - start_time} seconds")    
+    print(f"Total time to search FAISS database: {end_time - start_time} seconds")    
     return D, I
 def main(image_path, model, device, top_n):
     index_path = 'main.index'
@@ -46,25 +46,28 @@ def main(image_path, model, device, top_n):
             with open(f'ecom_npy_files/{t}-{i}.npy', 'rb') as f:
                 # Load the text from the file
                 text = np.load(f, allow_pickle=True).item()
-                print(text)
                 # Check if t contains NaN then fill it with empty string
                 for i in text.keys():
-                    if text[i] is None:
+                    if text[i] is None or str(text[i]) == "nan":
                         text[i] = ""
-                tags.append(t)
+                tags.append(text)
         except Exception as e:
             print(e)
-    print("\n\n")
-    print("-"*100)
-    print("Tags Found are : \n ")
-    print(tags)
-    print("-"*100)
+    
     return tags
 if __name__ == "__main__":
-    image_path = "image.jpg"  
+    image_path = "laguage.jpeg"  
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     print("Device   ", device)
     model = imagebind_model.imagebind_huge(pretrained=True)
     model.eval()
     model.to(device)
-    main(image_path, model, device)
+    tags = main(image_path, model, device, 10)
+    print("\n\n")
+    print("-"*100)
+    print("Tags Found are : \n ")
+    for tag in tags:
+        print(tag)
+        print("\n")
+    print("-"*100)
+    print("Length of tags are : ", len(tags))
