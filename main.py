@@ -193,7 +193,7 @@ def get_tags(File : UploadFile = File(...)):
 
 # Get tags API
 @app.post("/image/get_details")
-def get_details(file : UploadFile = File(...), top_n = 5):
+def get_details(file : UploadFile = File(...), top_n : str = "15"):
     try:
         # Save the image to images folder
         file_path = os.path.join("./images", file.filename)
